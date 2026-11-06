@@ -1,0 +1,78 @@
+{
+    "version": "0.5.0",
+    "description": "Mechanical keyboard sounds with a native Windows tray menu.",
+    "homepage": "https://klicky.muneer320.tech/",
+    "license": "MIT",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/Muneer320/klicky/releases/download/v0.5.0/klicky-0.5.0-windows-x64.zip",
+            "hash": "e63d1e8d18d74dae1527cc91611d2a6ce72aa36c5fe2de694d93c05f085c2121",
+            "extract_dir": "klicky-0.5.0-windows-x64"
+        }
+    },
+    "bin": "klicky.exe",
+    "shortcuts": [
+        [
+            "klicky-desktop.exe",
+            "Klicky"
+        ]
+    ],
+    "persist": "integration",
+    "pre_install": [
+        "if ($global) { throw 'Klicky supports per-user installation only. Omit --global.' }",
+        "if ([Environment]::OSVersion.Version.Build -lt 22000 -or $env:PROCESSOR_ARCHITECTURE -eq 'ARM64' -or $env:PROCESSOR_ARCHITEW6432 -eq 'ARM64') { throw 'Klicky requires Windows 11 x64.' }"
+    ],
+    "pre_uninstall": [
+        "$ErrorActionPreference = 'Stop'",
+        "$receipt = Join-Path $persist_dir 'integration/update.json'",
+        "$status = & \"$dir/klicky.exe\" service status",
+        "if ($LASTEXITCODE) { throw 'Cannot determine Klicky startup state; removal stopped.' }",
+        "$startup = [bool]($status -match '^Login shortcut: Registered;')",
+        "$prepared = & \"$dir/klicky.exe\" service prepare-update",
+        "if ($LASTEXITCODE -or $prepared -notmatch '^KLICKY_UPDATE_V1 [01] [01]$') { throw 'Cannot stop the owned Klicky bundle; removal stopped.' }",
+        "$fields = $prepared -split ' '",
+        "if ($cmd -eq 'update') {",
+        "    New-Item -ItemType Directory -Force (Split-Path $receipt) | Out-Null",
+        "    @{ startup = $startup; restart = ($fields[1] -eq '1'); paused = ($fields[2] -eq '1') } | ConvertTo-Json | Set-Content -LiteralPath $receipt -Encoding UTF8",
+        "} elseif (Test-Path -LiteralPath $receipt) { Remove-Item -LiteralPath $receipt }",
+        "$removed = & \"$dir/klicky.exe\" service unregister-startup",
+        "if ($LASTEXITCODE -or $removed -notmatch '^KLICKY_STARTUP_V1 (ABSENT|FOREIGN)$') { throw 'Cannot verify startup cleanup; removal stopped.' }"
+    ],
+    "post_install": [
+        "$ErrorActionPreference = 'Stop'",
+        "$receipt = Join-Path $persist_dir 'integration/update.json'",
+        "if ($cmd -eq 'update' -and (Test-Path -LiteralPath $receipt)) {",
+        "    $state = Get-Content -LiteralPath $receipt -Raw | ConvertFrom-Json",
+        "    if ($state.startup -eq $true) {",
+        "        & \"$dir/klicky.exe\" service register-startup",
+        "        if ($LASTEXITCODE) { throw 'Could not restore Klicky login startup; update receipt retained.' }",
+        "    }",
+        "    if ($state.restart -eq $true) {",
+        "        if ($state.paused -eq $true) { & \"$dir/klicky.exe\" service start --paused } else { & \"$dir/klicky.exe\" service start }",
+        "        if ($LASTEXITCODE) { throw 'Could not restart Klicky; update receipt retained.' }",
+        "    }",
+        "    Remove-Item -LiteralPath $receipt",
+        "}"
+    ],
+    "notes": [
+        "Open Klicky from Start, or run: klicky service start",
+        "Optional login startup: klicky service enable",
+        "Before updating: klicky service stop; then scoop update klicky; then klicky service start.",
+        "Settings and custom packs stay in %LOCALAPPDATA%\\Klicky, including with scoop uninstall --purge.",
+        "Use one installation method. See the bucket README for migration and removal details."
+    ],
+    "checkver": {
+        "github": "https://github.com/Muneer320/klicky"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/Muneer320/klicky/releases/download/v$version/klicky-$version-windows-x64.zip",
+                "extract_dir": "klicky-$version-windows-x64",
+                "hash": {
+                    "url": "$url.sha256"
+                }
+            }
+        }
+    }
+}

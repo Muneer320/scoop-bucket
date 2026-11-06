@@ -1,0 +1,66 @@
+name: Package lifecycle
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v5
+      - name: Prepare isolated Scoop
+        run: |
+          $env:SCOOP = "$env:RUNNER_TEMP/scoop"
+          "SCOOP=$env:SCOOP" >> $env:GITHUB_ENV
+          git clone --depth 1 https://github.com/ScoopInstaller/Scoop.git "$env:SCOOP/apps/scoop/current"
+          if ($LASTEXITCODE) { throw 'Scoop clone failed' }
+          '{}' | Set-Content "$env:SCOOP/config.json"
+          New-Item -ItemType Directory -Force "$env:SCOOP/buckets/klicky/bucket" | Out-Null
+          Copy-Item bucket/klicky.json "$env:SCOOP/buckets/klicky/bucket/"
+      - name: Install, configure and register startup
+        run: |
+          & "$env:SCOOP/apps/scoop/current/bin/scoop.ps1" install klicky/klicky
+          if ($LASTEXITCODE) { throw 'Install failed' }
+          $exe = "$env:SCOOP/apps/klicky/current/klicky.exe"
+          & $exe --version
+          & $exe list
+          if ($LASTEXITCODE) { throw 'Bundled sounds unavailable' }
+          & $exe volume 0.2
+          & $exe service register-startup
+          if ($LASTEXITCODE) { throw 'Startup registration failed' }
+          (Get-FileHash "$env:LOCALAPPDATA/Klicky/config.toml").Hash | Set-Content "$env:RUNNER_TEMP/config.sha256"
+      - name: Same-version update preserves startup and configuration
+        run: |
+          & "$env:SCOOP/apps/scoop/current/bin/scoop.ps1" update klicky --force
+          if ($LASTEXITCODE) { throw 'Update failed' }
+          $exe = "$env:SCOOP/apps/klicky/current/klicky.exe"
+          if ((& $exe service status) -notmatch '^Login shortcut: Registered;') { throw 'Startup lost' }
+          if ((Get-FileHash "$env:LOCALAPPDATA/Klicky/config.toml").Hash -ne (Get-Content "$env:RUNNER_TEMP/config.sha256")) { throw 'Settings changed' }
+          & $exe service start --paused
+          if ($LASTEXITCODE) { throw 'Paused launch failed' }
+      - name: Remove running app and owned startup, retain settings
+        run: |
+          & "$env:SCOOP/apps/scoop/current/bin/scoop.ps1" uninstall klicky --purge
+          if ($LASTEXITCODE) { throw 'Uninstall failed' }
+          if (Test-Path "$env:SCOOP/apps/klicky") { throw 'Bundle remained' }
+          $startup = [Environment]::GetFolderPath('Startup')
+          if (Test-Path "$startup/Klicky.lnk") { throw 'Startup remained' }
+          if ((Get-FileHash "$env:LOCALAPPDATA/Klicky/config.toml").Hash -ne (Get-Content "$env:RUNNER_TEMP/config.sha256")) { throw 'Settings changed' }
+      - name: Preserve a separately owned portable app
+        run: |
+          & "$env:SCOOP/apps/scoop/current/bin/scoop.ps1" install klicky/klicky
+          if ($LASTEXITCODE) { throw 'Reinstall failed' }
+          Copy-Item "$env:SCOOP/apps/klicky/0.5.0" "$env:RUNNER_TEMP/foreign-klicky" -Recurse
+          $foreign = "$env:RUNNER_TEMP/foreign-klicky/klicky.exe"
+          & $foreign service register-startup
+          & $foreign service start --paused
+          if ($LASTEXITCODE) { throw 'Foreign setup failed' }
+          & "$env:SCOOP/apps/scoop/current/bin/scoop.ps1" uninstall klicky --purge
+          if ($LASTEXITCODE) { throw 'Removal with foreign app failed' }
+          $status = & $foreign service status
+          if ($LASTEXITCODE -or $status -notmatch '^Login shortcut: Registered;' -or $status -notmatch 'Paused') { throw 'Foreign installation was disturbed' }
+          & $foreign service disable
+          if ($LASTEXITCODE) { throw 'Foreign cleanup failed' }
