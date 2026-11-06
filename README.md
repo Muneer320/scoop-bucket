@@ -37,7 +37,7 @@ The hook stops only this bundle and removes only its owned login shortcut. A sep
 
 ## Trust and maintenance
 
-Downloads come from immutable [Klicky releases](https://github.com/Muneer320/klicky/releases), with SHA-256 verification. The Windows binaries are unsigned. If Windows Security detects a threat, stop and follow the [troubleshooting guide](https://github.com/Muneer320/klicky/blob/master/docs/TROUBLESHOOTING.md#windows); do not turn off protection.
+Downloads come from versioned [Klicky releases](https://github.com/Muneer320/klicky/releases), with SHA-256 verification. The Windows binaries are unsigned. If Windows Security detects a threat, stop and follow the [troubleshooting guide](https://github.com/Muneer320/klicky/blob/master/docs/TROUBLESHOOTING.md#windows); do not turn off protection.
 
 CI exercises install, same-version update, offline sound discovery, configuration persistence, paused process removal, startup cleanup and preservation of another bundle. It does not measure physical audio latency. Version updates are reviewed before publication; `checkver` and `autoupdate` describe stable release URLs without automatically publishing manifests.
 

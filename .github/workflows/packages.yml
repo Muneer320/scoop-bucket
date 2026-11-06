@@ -20,6 +20,11 @@ jobs:
           '{}' | Set-Content "$env:SCOOP/config.json"
           New-Item -ItemType Directory -Force "$env:SCOOP/shims", "$env:SCOOP/buckets/klicky/bucket" | Out-Null
           Copy-Item bucket/klicky.json "$env:SCOOP/buckets/klicky/bucket/"
+          # Same published binary under a different CI-only version directory.
+          # This checks path migration without inventing a released older build.
+          $previous = Get-Content bucket/klicky.json -Raw | ConvertFrom-Json
+          $previous.version = '0.5.0-ci-path'
+          $previous | ConvertTo-Json -Depth 20 | Set-Content "$env:SCOOP/buckets/klicky/bucket/klicky.json"
       - name: Install, configure and register startup
         run: |
           & "$env:SCOOP/apps/scoop/current/bin/scoop.ps1" install klicky/klicky
@@ -32,13 +37,18 @@ jobs:
           & $exe service register-startup
           if ($LASTEXITCODE) { throw 'Startup registration failed' }
           (Get-FileHash "$env:LOCALAPPDATA/Klicky/config.toml").Hash | Set-Content "$env:RUNNER_TEMP/config.sha256"
-      - name: Same-version update preserves startup and configuration
+      - name: Version-directory migration preserves startup and configuration
         run: |
+          Copy-Item bucket/klicky.json "$env:SCOOP/buckets/klicky/bucket/" -Force
           & "$env:SCOOP/apps/scoop/current/bin/scoop.ps1" update klicky --force
           if ($LASTEXITCODE) { throw 'Update failed' }
           $exe = "$env:SCOOP/apps/klicky/current/klicky.exe"
           if (((& $exe service status) -join "`n") -notmatch '(?m)^Login shortcut: Registered;') { throw 'Startup lost' }
+          $shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path ([Environment]::GetFolderPath('Startup')) 'Klicky.lnk'))
+          if ($shortcut.TargetPath -ne "$env:SCOOP\apps\klicky\0.5.0\klicky-desktop.exe".Replace('/', '\')) { throw 'Startup still points at old version' }
           if ((Get-FileHash "$env:LOCALAPPDATA/Klicky/config.toml").Hash -ne (Get-Content "$env:RUNNER_TEMP/config.sha256")) { throw 'Settings changed' }
+          & "$env:SCOOP/apps/scoop/current/bin/scoop.ps1" update klicky --force
+          if ($LASTEXITCODE) { throw 'Same-version update failed' }
           & $exe service start --paused
           if ($LASTEXITCODE) { throw 'Paused launch failed' }
       - name: Remove running app and owned startup, retain settings
