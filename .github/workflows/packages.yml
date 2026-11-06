@@ -18,7 +18,7 @@ jobs:
           git clone --depth 1 https://github.com/ScoopInstaller/Scoop.git "$env:SCOOP/apps/scoop/current"
           if ($LASTEXITCODE) { throw 'Scoop clone failed' }
           '{}' | Set-Content "$env:SCOOP/config.json"
-          New-Item -ItemType Directory -Force "$env:SCOOP/buckets/klicky/bucket" | Out-Null
+          New-Item -ItemType Directory -Force "$env:SCOOP/shims", "$env:SCOOP/buckets/klicky/bucket" | Out-Null
           Copy-Item bucket/klicky.json "$env:SCOOP/buckets/klicky/bucket/"
       - name: Install, configure and register startup
         run: |
@@ -37,7 +37,7 @@ jobs:
           & "$env:SCOOP/apps/scoop/current/bin/scoop.ps1" update klicky --force
           if ($LASTEXITCODE) { throw 'Update failed' }
           $exe = "$env:SCOOP/apps/klicky/current/klicky.exe"
-          if ((& $exe service status) -notmatch '^Login shortcut: Registered;') { throw 'Startup lost' }
+          if (((& $exe service status) -join "`n") -notmatch '(?m)^Login shortcut: Registered;') { throw 'Startup lost' }
           if ((Get-FileHash "$env:LOCALAPPDATA/Klicky/config.toml").Hash -ne (Get-Content "$env:RUNNER_TEMP/config.sha256")) { throw 'Settings changed' }
           & $exe service start --paused
           if ($LASTEXITCODE) { throw 'Paused launch failed' }
@@ -60,7 +60,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'Foreign setup failed' }
           & "$env:SCOOP/apps/scoop/current/bin/scoop.ps1" uninstall klicky --purge
           if ($LASTEXITCODE) { throw 'Removal with foreign app failed' }
-          $status = & $foreign service status
-          if ($LASTEXITCODE -or $status -notmatch '^Login shortcut: Registered;' -or $status -notmatch 'Paused') { throw 'Foreign installation was disturbed' }
+          $status = (& $foreign service status) -join "`n"
+          if ($LASTEXITCODE -or $status -notmatch '(?m)^Login shortcut: Registered;' -or $status -notmatch 'Paused') { throw 'Foreign installation was disturbed' }
           & $foreign service disable
           if ($LASTEXITCODE) { throw 'Foreign cleanup failed' }
