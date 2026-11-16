@@ -23,7 +23,7 @@ jobs:
           # Same published binary under a different CI-only version directory.
           # This checks path migration without inventing a released older build.
           $previous = Get-Content bucket/klicky.json -Raw | ConvertFrom-Json
-          $previous.version = '0.5.0-ci-path'
+          $previous.version = "$($previous.version)-ci-path"
           $previous | ConvertTo-Json -Depth 20 | Set-Content "$env:SCOOP/buckets/klicky/bucket/klicky.json"
       - name: Install, configure and register startup
         run: |
@@ -45,7 +45,7 @@ jobs:
           $exe = "$env:SCOOP/apps/klicky/current/klicky.exe"
           if (((& $exe service status) -join "`n") -notmatch '(?m)^Login shortcut: Registered;') { throw 'Startup lost' }
           $shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path ([Environment]::GetFolderPath('Startup')) 'Klicky.lnk'))
-          if ($shortcut.TargetPath -ne "$env:SCOOP\apps\klicky\0.5.0\klicky-desktop.exe".Replace('/', '\')) { throw 'Startup still points at old version' }
+          if ($shortcut.TargetPath -ne "$env:SCOOP\apps\klicky\$((Get-Content bucket/klicky.json -Raw | ConvertFrom-Json).version)\klicky-desktop.exe".Replace('/', '\')) { throw 'Startup still points at old version' }
           if ((Get-FileHash "$env:LOCALAPPDATA/Klicky/config.toml").Hash -ne (Get-Content "$env:RUNNER_TEMP/config.sha256")) { throw 'Settings changed' }
           & "$env:SCOOP/apps/scoop/current/bin/scoop.ps1" update klicky --force
           if ($LASTEXITCODE) { throw 'Same-version update failed' }
@@ -63,7 +63,7 @@ jobs:
         run: |
           & "$env:SCOOP/apps/scoop/current/bin/scoop.ps1" install klicky/klicky
           if ($LASTEXITCODE) { throw 'Reinstall failed' }
-          Copy-Item "$env:SCOOP/apps/klicky/0.5.0" "$env:RUNNER_TEMP/foreign-klicky" -Recurse
+          Copy-Item "$env:SCOOP/apps/klicky/$((Get-Content bucket/klicky.json -Raw | ConvertFrom-Json).version)" "$env:RUNNER_TEMP/foreign-klicky" -Recurse
           $foreign = "$env:RUNNER_TEMP/foreign-klicky/klicky.exe"
           & $foreign service register-startup
           & $foreign service start --paused
