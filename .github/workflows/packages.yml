@@ -43,7 +43,7 @@ jobs:
           & "$env:SCOOP/apps/scoop/current/bin/scoop.ps1" update klicky --force
           if ($LASTEXITCODE) { throw 'Update failed' }
           $exe = "$env:SCOOP/apps/klicky/current/klicky.exe"
-          if (((& $exe service status) -join "`n") -notmatch '(?m)^Login shortcut: Registered;') { throw 'Startup lost' }
+          if (((& $exe service status) -join "`n") -notmatch '(?m)^Login (?:shortcut|startup): Registered;') { throw 'Startup lost' }
           $shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path ([Environment]::GetFolderPath('Startup')) 'Klicky.lnk'))
           if ($shortcut.TargetPath -ne "$env:SCOOP\apps\klicky\$((Get-Content bucket/klicky.json -Raw | ConvertFrom-Json).version)\klicky-desktop.exe".Replace('/', '\')) { throw 'Startup still points at old version' }
           if ((Get-FileHash "$env:LOCALAPPDATA/Klicky/config.toml").Hash -ne (Get-Content "$env:RUNNER_TEMP/config.sha256")) { throw 'Settings changed' }
@@ -71,6 +71,6 @@ jobs:
           & "$env:SCOOP/apps/scoop/current/bin/scoop.ps1" uninstall klicky --purge
           if ($LASTEXITCODE) { throw 'Removal with foreign app failed' }
           $status = (& $foreign service status) -join "`n"
-          if ($LASTEXITCODE -or $status -notmatch '(?m)^Login shortcut: Registered;' -or $status -notmatch 'Paused') { throw 'Foreign installation was disturbed' }
+          if ($LASTEXITCODE -or $status -notmatch '(?m)^Login (?:shortcut|startup): Registered;' -or $status -notmatch 'Paused') { throw 'Foreign installation was disturbed' }
           & $foreign service disable
           if ($LASTEXITCODE) { throw 'Foreign cleanup failed' }

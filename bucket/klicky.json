@@ -27,7 +27,7 @@
         "$receipt = Join-Path $persist_dir 'integration/update.json'",
         "$status = & \"$dir/klicky.exe\" service status",
         "if ($LASTEXITCODE) { throw 'Cannot determine Klicky startup state; removal stopped.' }",
-        "$startup = [bool]($status -match '^Login shortcut: Registered;')",
+        "$startup = [bool]($status -match '^Login (?:shortcut|startup): Registered;')",
         "$prepared = & \"$dir/klicky.exe\" service prepare-update",
         "if ($LASTEXITCODE -or $prepared -notmatch '^KLICKY_UPDATE_V1 [01] [01]$') { throw 'Cannot stop the owned Klicky bundle; removal stopped.' }",
         "$fields = $prepared -split ' '",
