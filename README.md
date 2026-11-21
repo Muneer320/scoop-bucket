@@ -16,6 +16,10 @@ Use **one installation method**. If Klicky is already installed with its setup E
 
 ## Update
 
+From v0.7.0, run `klicky update --check` to check for a release, or `klicky update` for a confirmed Scoop update. It stops the owned app before Scoop's running-app check and restores its running/paused state afterward.
+
+For an older version, or a manual update:
+
 ```powershell
 klicky service stop
 scoop update
