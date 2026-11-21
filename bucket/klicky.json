@@ -1,13 +1,13 @@
 {
-    "version": "0.6.1",
+    "version": "0.7.0",
     "description": "Mechanical keyboard sounds with a native Windows tray menu.",
     "homepage": "https://klicky.muneer320.tech/",
     "license": "MIT",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/Muneer320/klicky/releases/download/v0.6.1/klicky-0.6.1-windows-x64.zip",
-            "hash": "c56405cd1daf023798840439255849295a3ef12a7a68c9523cbdc95959862ba3",
-            "extract_dir": "klicky-0.6.1-windows-x64"
+            "url": "https://github.com/Muneer320/klicky/releases/download/v0.7.0/klicky-0.7.0-windows-x64.zip",
+            "hash": "c05591a93767315bbb50dbf0f3f86fc4e11c292f8c6c178b3d03bc3dca3fd32a",
+            "extract_dir": "klicky-0.7.0-windows-x64"
         }
     },
     "bin": "klicky.exe",
@@ -57,7 +57,7 @@
     "notes": [
         "Open Klicky from Start, or run: klicky service start",
         "Optional login startup: klicky service enable",
-        "Before updating: klicky service stop; then scoop update klicky; then klicky service start.",
+        "Check for a release: klicky update --check. For a confirmed update that restores playback state: klicky update.",
         "Settings and custom packs stay in %LOCALAPPDATA%\\Klicky, including with scoop uninstall --purge.",
         "Use one installation method. See the bucket README for migration and removal details."
     ],
